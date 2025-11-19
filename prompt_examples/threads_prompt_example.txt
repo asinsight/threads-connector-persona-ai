@@ -4,7 +4,7 @@ Use the following persona guidance to craft a concise Threads post in Korean.
 {persona_content}
 
 [Writing Rules]
-- Write 3-5 sentences that read naturally.
+- Write 3-5 sentences that read naturally, maximum 500 words.
 - Avoid sounding overly promotional; keep an authentic and helpful tone.
 - Include concrete details such as numbers, metrics, or examples where possible.
 - Optimize for short, readable sentences that suit Threads.
