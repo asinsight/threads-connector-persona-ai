@@ -5,18 +5,24 @@ from typing import Dict, List
 import boto3
 import requests
 from openai import OpenAI
+import logging
+from botocore.exceptions import ClientError
+
+# Configure logging
+LOGGER = logging.getLogger()
+LOGGER.setLevel(logging.INFO)
+
 
 s3_client = boto3.client("s3")
 secrets_client = boto3.client("secretsmanager")
 
-
-def get_secret(secret_name: str) -> Dict[str, str]:
+def get_secret(secret_name: str, key_name: str) -> Dict[str, str]:
     response = secrets_client.get_secret_value(SecretId=secret_name)
     secret_string = response.get("SecretString", "{}")
     try:
         return json.loads(secret_string)
     except json.JSONDecodeError:
-        return {"api_key": secret_string}
+        return {key_name: secret_string}
 
 
 def load_prompt_example() -> str:
@@ -53,21 +59,19 @@ def post_to_threads_api(post_url: str, api_key: str, user_id: str, post_text: st
 
 def handler(event, context):  # pylint: disable=unused-argument
     persona_bucket = os.environ.get("PERSONA_BUCKET")
-    persona_keys = os.environ.get("PERSONA_KEYS", "").split(",")
-    post_url = os.environ.get("THREADS_POST_URL")
+    persona_keys = os.environ.get("PERSONA_KEYS", "stock_analyzer.txt").split(",")
+    post_url = os.environ.get("THREADS_POST_URL", "https://aylhkweg4d.execute-api.us-east-1.amazonaws.com/dev/post")
     user_id = os.environ.get("THREADS_USER_ID", "default")
-    model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+    model = os.environ.get("OPENAI_MODEL", "gpt-5.1")
 
     if not persona_bucket or not post_url:
         raise ValueError("PERSONA_BUCKET and THREADS_POST_URL environment variables are required")
 
-    openai_secret_name = os.environ.get("OPENAI_SECRET_NAME")
-    api_secret_name = os.environ.get("THREADS_API_SECRET_NAME")
-    if not openai_secret_name or not api_secret_name:
-        raise ValueError("OPENAI_SECRET_NAME and THREADS_API_SECRET_NAME environment variables are required")
+    openai_secret_name = os.environ.get("OPENAI_SECRET_NAME", "openai-key")
+    api_secret_name = os.environ.get("THREADS_API_SECRET_NAME", "threads-api-key")
 
-    openai_secret = get_secret(openai_secret_name)
-    api_secret = get_secret(api_secret_name)
+    openai_secret = get_secret(openai_secret_name, "api_key")
+    api_secret = get_secret(api_secret_name, "api_key")
 
     openai_client = OpenAI(api_key=openai_secret.get("api_key"))
     prompt_template = load_prompt_example()

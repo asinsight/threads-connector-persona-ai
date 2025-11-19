@@ -4,6 +4,12 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
+variable "profile_name" {
+  description = "AWS CLI profile name"
+  type        = string
+  default     = "swiri021"
+}
+
 variable "persona_bucket_name" {
   description = "S3 bucket name that stores persona guideline files"
   type        = string

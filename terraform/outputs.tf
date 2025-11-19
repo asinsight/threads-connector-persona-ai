@@ -12,3 +12,13 @@ output "eventbridge_rule_arn" {
   description = "ARN of the EventBridge rule that triggers the Lambda"
   value       = module.threads_schedule.rule_arn
 }
+
+output "ecr_repository_url" {
+  description = "ECR repository URL for the Lambda Docker image"
+  value       = module.lambda_ecr_repository.repository_url
+}
+
+output "ecr_repository_name" {
+  description = "ECR repository name"
+  value       = module.lambda_ecr_repository.repository_name
+}
