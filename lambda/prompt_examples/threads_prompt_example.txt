@@ -1,0 +1,10 @@
+Use persona guidance to create a Korean Threads post.
+
+[Persona]
+{persona_content}
+
+[Rules]
+- Must be in Korean
+- Keep it under 400 characters
+- Include numbers/metrics/examples
+- Short, readable, natural sentences
