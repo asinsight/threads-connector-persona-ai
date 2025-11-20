@@ -1,14 +1,10 @@
-Use the following persona guidance to craft a concise Threads post in Korean.
+Use persona guidance to create a Korean Threads post.
 
-[Persona Instructions]
+[Persona]
 {persona_content}
 
-[Writing Rules]
-- Write 3-5 sentences that read naturally.
-- Avoid sounding overly promotional; keep an authentic and helpful tone.
-- Include concrete details such as numbers, metrics, or examples where possible.
-- Optimize for short, readable sentences that suit Threads.
-- Use 1-3 hashtags that are tightly related to the persona topic.
-
-[Output]
-- Return only the final post text without extra commentary or metadata.
+[Rules]
+- Must be in Korean
+- Keep it under 400 characters
+- Include numbers/metrics/examples
+- Short, readable, natural sentences

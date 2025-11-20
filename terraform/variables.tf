@@ -22,7 +22,7 @@ variable "persona_files" {
 }
 
 variable "lambda_image_uri" {
-  description = "ECR image URI for the Lambda function"
+  description = "ECR image URI for the Lambda function (format: account.dkr.ecr.region.amazonaws.com/repo:tag)"
   type        = string
 }
 

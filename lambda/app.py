@@ -1,11 +1,12 @@
 import json
 import os
-from typing import Dict, List
-
+from typing import Dict
+import time
 import boto3
 import requests
 from openai import OpenAI
 import logging
+import random
 from botocore.exceptions import ClientError
 
 # Configure logging
@@ -41,25 +42,34 @@ def build_prompt(persona_text: str, prompt_template: str) -> str:
 
 
 def generate_post(model: str, client: OpenAI, prompt: str) -> str:
-    completion = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.7,
-        max_tokens=400,
-    )
-    return completion.choices[0].message.content
+    try:
+        completion = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            max_completion_tokens=500,
+        )
+        LOGGER.info(f"Completion choices: {completion.choices}")
+        LOGGER.info(f"Finish reason: {completion.choices[0].finish_reason}")
+        LOGGER.info(f"Post generated successfully. Finish reason: {completion.choices[0].finish_reason}")
+        return completion.choices[0].message.content
+    except Exception as e:
+        LOGGER.error(f"Error generating post: {str(e)}", exc_info=True)
+        raise
 
 
-def post_to_threads_api(post_url: str, api_key: str, user_id: str, post_text: str) -> None:
-    payload = {"user_id": user_id, "post_text": post_text}
+def post_to_threads_api(post_url: str, api_key: str, user_id: str, post_text: str, topic_tag: str) -> None:
+    payload = {"user_id": user_id, "post_text": post_text, "topic_tag": topic_tag}
+    LOGGER.info(f"Payload: {payload}")
     headers = {"x-api-key": api_key, "Content-Type": "application/json"}
+    LOGGER.info(f"Posting to Threads API: {payload}")
     response = requests.post(post_url, headers=headers, json=payload, timeout=30)
     response.raise_for_status()
+    LOGGER.info(f"Successfully posted to Threads API. Status code: {response.status_code}")
 
 
 def handler(event, context):  # pylint: disable=unused-argument
     persona_bucket = os.environ.get("PERSONA_BUCKET")
-    persona_keys = os.environ.get("PERSONA_KEYS", "stock_analyzer.txt").split(",")
+    persona_keys = os.environ.get("PERSONA_KEYS", "chief.txt,stock_analyzer.txt").split(",")
     post_url = os.environ.get("THREADS_POST_URL", "https://aylhkweg4d.execute-api.us-east-1.amazonaws.com/dev/post")
     user_id = os.environ.get("THREADS_USER_ID", "default")
     model = os.environ.get("OPENAI_MODEL", "gpt-5.1")
@@ -76,15 +86,29 @@ def handler(event, context):  # pylint: disable=unused-argument
     openai_client = OpenAI(api_key=openai_secret.get("api_key"))
     prompt_template = load_prompt_example()
 
-    posts: List[str] = []
-    for key in persona_keys:
-        persona_key = key.strip()
-        if not persona_key:
-            continue
-        persona_text = fetch_persona(persona_bucket, persona_key)
-        prompt = build_prompt(persona_text, prompt_template)
-        post_text = generate_post(model, openai_client, prompt)
-        posts.append(post_text)
-        post_to_threads_api(post_url, api_secret.get("api_key"), user_id, post_text)
+    # Randomly select one persona key
+    persona_keys_cleaned = [key.strip() for key in persona_keys if key.strip()]
+    if not persona_keys_cleaned:
+        raise ValueError("No valid persona keys found")
 
-    return {"status": "success", "posts_created": len(posts)}
+    selected_persona_key = random.choice(persona_keys_cleaned)
+    LOGGER.info(f"Randomly selected persona: {selected_persona_key}")
+    topic_tag_mapping = {
+        "chief.txt": "집밥 요리",
+        "stock_analyzer.txt": "미국 주식"
+    }
+    topic_tag = topic_tag_mapping.get(selected_persona_key, "일상")
+
+    # Process only the selected persona
+    persona_text = fetch_persona(persona_bucket, selected_persona_key)
+    prompt = build_prompt(persona_text, prompt_template)
+    post_text = generate_post(model, openai_client, prompt)
+    post_to_threads_api(post_url, api_secret.get("api_key"), user_id, post_text, topic_tag)
+
+    return {
+        "status": "success",
+        "posts_created": 1,
+        "persona_used": selected_persona_key,
+        "post_text": post_text,
+        "topic_tag": topic_tag
+    }

@@ -1,1 +1,9 @@
 .claude/
+.terraform/
+__pycache__/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+openai_env/
+openai_test.py
+docker_build
