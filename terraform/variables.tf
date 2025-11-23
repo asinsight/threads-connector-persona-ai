@@ -36,10 +36,10 @@ variable "threads_api_secret_name" {
   type        = string
 }
 
-variable "threads_post_url" {
-  description = "API Gateway URL for posting Threads content"
+variable "threads_connector_function_name" {
+  description = "Name of the Threads Connector Lambda function to invoke"
   type        = string
-  default     = "https://aylhkweg4d.execute-api.us-east-1.amazonaws.com/dev/post"
+  default     = "threads-connector-dev-api"
 }
 
 variable "threads_user_id" {

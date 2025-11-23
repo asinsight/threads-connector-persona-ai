@@ -11,11 +11,11 @@ module "threads_persona_lambda" {
   tags          = var.tags
 
   environment = {
-    PERSONA_BUCKET          = module.persona_bucket.bucket_name
-    PERSONA_KEYS            = join(",", var.persona_files)
-    OPENAI_SECRET_NAME      = var.openai_secret_name
-    THREADS_API_SECRET_NAME = var.threads_api_secret_name
-    THREADS_POST_URL        = var.threads_post_url
-    THREADS_USER_ID         = var.threads_user_id
+    PERSONA_BUCKET                  = module.persona_bucket.bucket_name
+    PERSONA_KEYS                    = join(",", var.persona_files)
+    OPENAI_SECRET_NAME              = var.openai_secret_name
+    THREADS_API_SECRET_NAME         = var.threads_api_secret_name
+    THREADS_CONNECTOR_FUNCTION_NAME = var.threads_connector_function_name
+    THREADS_USER_ID                 = var.threads_user_id
   }
 }

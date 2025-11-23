@@ -57,31 +57,44 @@ def generate_post(model: str, client: OpenAI, prompt: str) -> str:
         raise
 
 
-def post_to_threads_api(post_url: str, api_key: str, user_id: str, post_text: str, topic_tag: str) -> None:
+def invoke_threads_lambda(function_name: str, user_id: str, post_text: str, topic_tag: str) -> None:
     payload = {"user_id": user_id, "post_text": post_text, "topic_tag": topic_tag}
-    LOGGER.info(f"Payload: {payload}")
-    headers = {"x-api-key": api_key, "Content-Type": "application/json"}
-    LOGGER.info(f"Posting to Threads API: {payload}")
-    response = requests.post(post_url, headers=headers, json=payload, timeout=30)
-    response.raise_for_status()
-    LOGGER.info(f"Successfully posted to Threads API. Status code: {response.status_code}")
+    # Wrap payload to mimic API Gateway event
+    event_payload = {"body": json.dumps(payload)}
+    LOGGER.info(f"Invoking Lambda {function_name} with payload: {event_payload}")
+    
+    lambda_client = boto3.client("lambda")
+    try:
+        response = lambda_client.invoke(
+            FunctionName=function_name,
+            InvocationType="RequestResponse",
+            Payload=json.dumps(event_payload)
+        )
+        
+        response_payload = json.loads(response["Payload"].read())
+        LOGGER.info(f"Lambda invocation response: {response_payload}")
+        
+        if response.get("FunctionError"):
+             LOGGER.error(f"Lambda invocation failed with error: {response_payload}")
+             raise Exception(f"Lambda invocation failed: {response_payload}")
 
+    except ClientError as e:
+        LOGGER.error(f"Error invoking Lambda: {e}")
+        raise
 
 def handler(event, context):  # pylint: disable=unused-argument
     persona_bucket = os.environ.get("PERSONA_BUCKET")
     persona_keys = os.environ.get("PERSONA_KEYS", "chief.txt,stock_analyzer.txt").split(",")
-    post_url = os.environ.get("THREADS_POST_URL", "https://aylhkweg4d.execute-api.us-east-1.amazonaws.com/dev/post")
+    target_function_name = os.environ.get("THREADS_CONNECTOR_FUNCTION_NAME", "threads-connector-dev-api")
     user_id = os.environ.get("THREADS_USER_ID", "default")
     model = os.environ.get("OPENAI_MODEL", "gpt-5.1")
 
-    if not persona_bucket or not post_url:
-        raise ValueError("PERSONA_BUCKET and THREADS_POST_URL environment variables are required")
+    if not persona_bucket or not target_function_name:
+        raise ValueError("PERSONA_BUCKET and THREADS_CONNECTOR_FUNCTION_NAME environment variables are required")
 
     openai_secret_name = os.environ.get("OPENAI_SECRET_NAME", "openai-key")
-    api_secret_name = os.environ.get("THREADS_API_SECRET_NAME", "threads-api-key")
 
     openai_secret = get_secret(openai_secret_name, "api_key")
-    api_secret = get_secret(api_secret_name, "api_key")
 
     openai_client = OpenAI(api_key=openai_secret.get("api_key"))
     prompt_template = load_prompt_example()
@@ -94,6 +107,7 @@ def handler(event, context):  # pylint: disable=unused-argument
     selected_persona_key = random.choice(persona_keys_cleaned)
     LOGGER.info(f"Randomly selected persona: {selected_persona_key}")
     topic_tag_mapping = {
+        "edu_mom.txt": "미국 교육",
         "chief.txt": "집밥 요리",
         "stock_analyzer.txt": "미국 주식"
     }
@@ -103,7 +117,7 @@ def handler(event, context):  # pylint: disable=unused-argument
     persona_text = fetch_persona(persona_bucket, selected_persona_key)
     prompt = build_prompt(persona_text, prompt_template)
     post_text = generate_post(model, openai_client, prompt)
-    post_to_threads_api(post_url, api_secret.get("api_key"), user_id, post_text, topic_tag)
+    invoke_threads_lambda(target_function_name, user_id, post_text, topic_tag)
 
     return {
         "status": "success",
