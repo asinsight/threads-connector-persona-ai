@@ -60,7 +60,7 @@ def generate_post(model: str, client: OpenAI, prompt: str) -> str:
 def invoke_threads_lambda(function_name: str, user_id: str, post_text: str, topic_tag: str) -> None:
     payload = {"user_id": user_id, "post_text": post_text, "topic_tag": topic_tag}
     # Wrap payload to mimic API Gateway event
-    event_payload = {"body": json.dumps(payload)}
+    event_payload = {"body": json.dumps(payload, ensure_ascii=False)}
     LOGGER.info(f"Invoking Lambda {function_name} with payload: {event_payload}")
     
     lambda_client = boto3.client("lambda")
@@ -68,7 +68,7 @@ def invoke_threads_lambda(function_name: str, user_id: str, post_text: str, topi
         response = lambda_client.invoke(
             FunctionName=function_name,
             InvocationType="RequestResponse",
-            Payload=json.dumps(event_payload)
+            Payload=json.dumps(event_payload, ensure_ascii=False)
         )
         
         response_payload = json.loads(response["Payload"].read())
